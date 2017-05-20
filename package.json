@@ -1,0 +1,40 @@
+{
+  "name": "mysql2-db",
+  "version": "0.0.1",
+  "description": "utility wrapper for Node.js mysql2 library",
+  "main": "db.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/titanium-bits/mysql2-db.git"
+  },
+  "keywords": [
+    "batch",
+    "prepared",
+    "statements",
+    "mysql",
+    "node",
+    "nodejs",
+    "error",
+    "handling",
+    "autocommit",
+    "transactions",
+    "rollback",
+    "query",
+    "execute"
+  ],
+  "author": "Titanium Bits",
+  "license": "BSD-3-Clause-Clear",
+  "bugs": {
+    "url": "https://github.com/titanium-bits/mysql2-db/issues"
+  },
+  "homepage": "https://github.com/titanium-bits/mysql2-db#readme",
+  "dependencies": {
+    "mysql2": "^1.2.0"
+  },
+  "devDependencies": {
+    "async": "^2.4.0"
+  }
+}

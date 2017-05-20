@@ -13,7 +13,7 @@ module.exports = {
      * (each generated with execute() or a query() method below),
      * and a callback like fn(error, results) { check error, do something with results }.
      */
-    act: (connectionInfo, operations, callback) => { return doAct(connectionInfo, false, operations, callback) },
+    act: (connectionInfo, operations, callback) => { return doAct(connectionInfo, false, operations, callback ? callback : (e, r) => { }) },
 
     /**
      * Performs one or more database actions in a transaction, with commit on success and rollback on error.
@@ -28,11 +28,46 @@ module.exports = {
      * Pass in the SQL to execute and any parameters to bind when executing.
      */
     execute: (sql, params) => { return createOp('e', sql, params, null); },
+
+    /**
+     * Specifies a database query action, which returns an array of objects (one per row returned by your query).
+     * Pass in the SQL to execute and any parameters to bind when executing.
+     */
     query: (sql, params) => { return createOp('q', sql, params, null); },
+
+    /**
+     * Specifies a database query action that returns one integer.
+     * Pass in the SQL to execute and any parameters to bind when executing.
+     * You can also pass in a default value that will be returned 
+     * if the result set is empty, or if the first value returned 
+     * isn't an integer.
+     */
     queryInt: (sql, params, dflt) => { return createOp('qi', sql, params, dflt); },
+
+    /**
+     * Specifies a database query action that returns one floating point number.
+     * Pass in the SQL to execute and any parameters to bind when executing.
+     * You can also pass in a default value that will be returned 
+     * if the result set is empty, or if the first value returned 
+     * isn't a number.
+     */
     queryFloat: (sql, params, dflt) => { return createOp('qf', sql, params, dflt); },
+
+    /**
+     * Specifies a database query action that returns one string.
+     * Pass in the SQL to execute and any parameters to bind when executing.
+     * You can also pass in a default value that will be returned 
+     * if the result set is empty, or if the first value returned 
+     * is null.
+     */
     queryString: (sql, params, dflt) => { return createOp('qs', sql, params, dflt); },
-    curtains: (callback) => { return doCurtains(callback); }
+
+    /**
+     * Gracefully closes all connections to all pools made through this
+     * instance of the library. Pass a callback if you want to know
+     * when it's all over.
+     */
+    curtains: (callback) => { return doCurtains(callback ? callback : () => { }); }
 };
 
 function createOp(opcode, sql, params, dflt) {
