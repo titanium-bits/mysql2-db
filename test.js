@@ -1,5 +1,5 @@
 const async = require('async');
-const dbconfig = require('./config/dbconfig.json');
+const dbconfig = require('./dbconfig.json');
 const db = require('./db');
 
 function dbact(cfg, ops, callback) {
