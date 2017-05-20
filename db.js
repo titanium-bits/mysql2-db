@@ -3,9 +3,6 @@ const mysql2 = require('mysql2');
 var _pools = {};
 var _closing = false;
 
-
-
-
 module.exports = {
     /**
      * Acts out one or more database actions (non-transactional, auto-commit mode).
@@ -380,4 +377,3 @@ function formatResult(op, resultSet) {
     }
     return dflt;
 }
-
