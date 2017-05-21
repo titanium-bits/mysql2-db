@@ -6,9 +6,11 @@ var _closing = false;
 module.exports = {
     /**
      * Acts out one or more database actions (non-transactional, auto-commit mode).
-     * Pass in your connection configuration, an array of operations
+     * Pass in your connection configuration, one action or an an array of actions
      * (each generated with execute() or a query() method below),
      * and a callback like fn(error, results) { check error, do something with results }.
+     * If you pass an array of actions, you'll get back an array of results.
+     * If you pass a single action, you'll get back a single result.
      */
     act: (connectionInfo, operations, callback) => { return doAct(connectionInfo, false, operations, callback ? callback : (e, r) => { }) },
 
@@ -81,8 +83,12 @@ function createOp(opcode, sql, params, dflt) {
 
 function doAct(dbcfg, bTransact, ops, cb) {
     if (_closing) return cb(new Error("Databases are closing down."));
-    if (!ops) ops = [];
-    if (!Array.isArray(ops)) ops = [ops];
+    if (!dbcfg || !ops || !cb)
+        throw new Error("Usage: you need to supply a db configuration, a list of actions, and a callback(err,results).");
+
+    var singularOperation = !Array.isArray(ops);
+    if (singularOperation) ops = [ops];
+
     var results = [];
     var transactionHasStarted = false;
 
@@ -119,20 +125,21 @@ function doAct(dbcfg, bTransact, ops, cb) {
     });
 
     function finalize(conn, err) {
+        var rv = singularOperation ? results[0] : results;
         if (conn) {
             if (transactionHasStarted) {
                 conn.rollback(() => {
                     releaseConnection(conn, () => {
-                        return process.nextTick(cb, err, results);
+                        return process.nextTick(cb, err, rv);
                     });
                 });
             } else {
                 releaseConnection(conn, () => {
-                    return process.nextTick(cb, err, results);
+                    return process.nextTick(cb, err, rv);
                 });
             }
         } else
-            return process.nextTick(cb, err, results);
+            return process.nextTick(cb, err, rv);
     }
 }
 

@@ -88,7 +88,6 @@ function canonicalExample(callback) {
     );
 }
 
-
 function tablelessQuery(callback) {
     dbfn(
         dbconfig,
@@ -96,8 +95,7 @@ function tablelessQuery(callback) {
         function (err, results) {
             if (err) throw err;
             if (!results) throw new Error("No results");
-            if (!results.length) throw new Error("Empty results");
-            if (results[0] != 2) throw new Error("Incorrect result; 1+1=" + results[0]);
+            if (results != 2) throw new Error("Incorrect result; 1+1=" + results[0]);
             process.nextTick(callback);
         }
     );
@@ -200,10 +198,8 @@ function oneQueryOneResult(callback) {
         console.log(JSON.stringify(results));
         if (err) throw err;
         if (!results) throw new Error("NO results");
-        if (!results.length) throw new Error("Empty results");
         if (results.length != 1) throw new Error("Should have gotten back one result");
-        if (results[0].length != 1) throw new Error("First result should have had one row");
-        if (results[0][0].ttl != 2) throw new Error("Didn't get back 1+1=2");
+        if (results[0].ttl != 2) throw new Error("Didn't get back 1+1=2");
         process.nextTick(callback);
     });
 }
@@ -245,8 +241,7 @@ function castFloatFails(callback) {
         function (err, results) {
             if (err) throw err;
             if (!results) throw new Error("No results");
-            if (!results.length) throw new Error("Empty results");
-            if (results[0] != 42.5) throw new Error("Incorrect result; " + results[0]);
+            if (results != 42.5) throw new Error("Incorrect result; " + results[0]);
             process.nextTick(callback);
         }
     );
@@ -258,8 +253,7 @@ function castIntegerFails(callback) {
         function (err, results) {
             if (err) throw err;
             if (!results) throw new Error("No results");
-            if (!results.length) throw new Error("Empty results");
-            if (results[0] != 3) throw new Error("Incorrect result; " + results[0]);
+            if (results != 3) throw new Error("Incorrect result; " + results[0]);
             process.nextTick(callback);
         }
     );
