@@ -1,5 +1,5 @@
 const async = require('async');
-const dbconfig = require('./dbconfig.json');
+const dbconfig = require('../dbconfig.json');
 const db = require('./db');
 
 function dbact(cfg, ops, callback) {
@@ -17,11 +17,11 @@ function generateRandomName() {
     return "TMP" + Math.floor(Math.random() * 10000) + "_" + tblcnt;
 }
 
-
 // here's our list of tests. each throws an Error on failure.
 var simpleTests = [
     canonicalExample,
     tablelessQuery, differentParamTypes, simpleInsertsWithQueryScalar, insertWithLastInsertId, manyInsertsWithQueryList,
+    oneQueryOneResult,
     invalidPoolConfig, invalidSql, emptyResultSet, castFloatFails, castIntegerFails,
     repetitionsFails, repetitiousSuccess
 ];
@@ -191,6 +191,19 @@ function manyInsertsWithQueryList(callback) {
         if (results[1] != N) throw new Error("Didn't insert N rows");
         if (results[2].length != N) throw new Error("Didn't get back 10 rows");
         if (results[2][4].txt != "text " + 4) throw new Error("Got back wrong text");
+        process.nextTick(callback);
+    });
+}
+
+function oneQueryOneResult(callback) {
+    db.act(dbconfig, db.query("select 1+1 as ttl"), (err, results) => {
+        console.log(JSON.stringify(results));
+        if (err) throw err;
+        if (!results) throw new Error("NO results");
+        if (!results.length) throw new Error("Empty results");
+        if (results.length != 1) throw new Error("Should have gotten back one result");
+        if (results[0].length != 1) throw new Error("First result should have had one row");
+        if (results[0][0].ttl != 2) throw new Error("Didn't get back 1+1=2");
         process.nextTick(callback);
     });
 }
