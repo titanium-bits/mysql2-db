@@ -76,6 +76,7 @@ function DbStage(cfg) {
 
 
 function doAction(opcode, sql, params, dflt) {
+    params = JSON.parse(JSON.stringify(params ? params : null));
     if (!opcode) throw new Error("Internal error: missing opcode");
     if (!sql) throw new Error("The SQL provided is blank or missing.");
     if (typeof (sql) != "string") throw new Error("The SQL provided is not a string.");
