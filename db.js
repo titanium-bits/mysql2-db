@@ -7,14 +7,18 @@ module.exports = {
      * returns a stage object that you can use to queue up SQL statements
      * with query() and execute().
      */
-    stage: (connectionInfo) => { return new DbStage(connectionInfo); },
+    stage: (connectionInfo) => {
+        return new DbStage(connectionInfo);
+    },
 
     /**
      * Gracefully closes all connections to all pools made through this
      * instance of the library. Pass an (optional) callback if you want to know
      * when it's all over.
      */
-    curtains: (callback) => { return POOL_FUNCTIONS.doCurtains(callback ? callback : () => { }); }
+    curtains: (callback) => {
+        return POOL_FUNCTIONS.doCurtains(callback ? callback : () => {});
+    }
 };
 
 function DbStage(cfg) {
@@ -25,13 +29,19 @@ function DbStage(cfg) {
      * of rows modified, rather than a resultset.
      * Pass in the SQL to execute and any parameters to bind when executing.
      */
-    this.execute = (sql, params) => { ops.push(doAction('e', sql, params, null)); return this; };
+    this.execute = (sql, params) => {
+        ops.push(doAction('e', sql, params, null));
+        return this;
+    };
 
     /**
      * Specifies a database query action, which returns an array of objects (one per row returned by your query).
      * Pass in the SQL to execute and any parameters to bind when executing.
      */
-    this.query = (sql, params) => { ops.push(doAction('q', sql, params, null)); return this; };
+    this.query = (sql, params) => {
+        ops.push(doAction('q', sql, params, null));
+        return this;
+    };
 
     /**
      * Specifies a database query action that returns one integer.
@@ -40,7 +50,10 @@ function DbStage(cfg) {
      * if the result set is empty, or if the first value returned 
      * isn't an integer.
      */
-    this.queryInt = (sql, params, dflt) => { ops.push(doAction('qi', sql, params, dflt)); return this; };
+    this.queryInt = (sql, params, dflt) => {
+        ops.push(doAction('qi', sql, params, dflt));
+        return this;
+    };
 
     /**
      * Specifies a database query action that returns one floating point number.
@@ -49,7 +62,10 @@ function DbStage(cfg) {
      * if the result set is empty, or if the first value returned 
      * isn't a number.
      */
-    this.queryFloat = (sql, params, dflt) => { ops.push(doAction('qf', sql, params, dflt)); return this; };
+    this.queryFloat = (sql, params, dflt) => {
+        ops.push(doAction('qf', sql, params, dflt));
+        return this;
+    };
 
     /**
      * Specifies a database query action that returns one string.
@@ -58,7 +74,10 @@ function DbStage(cfg) {
      * if the result set is empty, or if the first value returned 
      * is null.
      */
-    this.queryString = (sql, params, dflt) => { ops.push(doAction('qs', sql, params, dflt)); return this; };
+    this.queryString = (sql, params, dflt) => {
+        ops.push(doAction('qs', sql, params, dflt));
+        return this;
+    };
 
     /**
      * Acts out queued SQL statements.
@@ -70,10 +89,29 @@ function DbStage(cfg) {
      * and committed on success, or rolled back (as much as possible)
      * on failure.
      */
-    this.finale = (callback, autocommit) => { doFinale(cfg, !autocommit, ops, callback); };
+    this.finale = (callback, autocommit, nowarn) => {
+        if (!nowarn)
+            console.trace("Consider using .perform() instead");
+        doFinale(cfg, !autocommit, ops, callback);
+    };
+
+    /**
+     * Await-friendly wrapper for finale: Calls finale (with autocommit=false) and returns a promise.
+     */
+    this.perform = () => {
+        return new Promise((resolve, reject) => {
+            try {
+                this.finale((err, results) => {
+                    if (err) return reject(err);
+                    if (results) return resolve(results);
+                    return reject(new Error("No results returned"));
+                }, false, true);
+            } catch (e) {
+                return reject(e);
+            }
+        });
+    }
 }
-
-
 
 function doAction(opcode, sql, params, dflt) {
     params = JSON.parse(JSON.stringify(params ? params : null));
@@ -86,7 +124,13 @@ function doAction(opcode, sql, params, dflt) {
     op.dflt = dflt;
     op.paramVals = params;
     op.paramShape = computeParamShape();
+
+    if (op.bindStyles[':'] && !op.bindStyles['?'] && op.paramShape == "array" && params.length === 0) {
+        op.paramShape = 'array.object';
+    }
+
     op.isMulti = (op.paramShape == "array.array" || op.paramShape == "array.object");
+
 
     if (op.bindStyles[':'] && op.bindStyles['?'])
         throw new Error("The SQL statement \"" + sql + "\" uses ? placeholders and : named placeholders. Pick one. It won't work to use both in the same SQL statement.");
@@ -99,18 +143,18 @@ function doAction(opcode, sql, params, dflt) {
         if (Array.isArray(params))
             params.forEach((param) => {
                 if (param === null || param === undefined)
-                    throw new Error("You have at least one null value in your parameters. That's not going to go well for you.");
+                    console.log("Warning: You have at least one null value in your parameters.");
                 if (Array.isArray(param))
                     param.forEach((p) => {
                         if (p === null || p === undefined)
-                            throw new Error("You have at least one null value in your parameters. That's not going to go well for you.");
+                            console.log("Warning: You have at least one null value in your parameters.");
                     });
                 else if (typeof param == "object")
                     for (var nm in param)
                         if (param.hasOwnProperty(nm)) {
                             var p = param[nm];
                             if (p === null || p === undefined)
-                                throw new Error("You have at least one null value in your parameters. That's not going to go well for you.");
+                                console.log("Warning: You have at least one null value in your parameters.");
                         }
             });
         else if (typeof params == "object")
@@ -118,7 +162,7 @@ function doAction(opcode, sql, params, dflt) {
                 if (params.hasOwnProperty(nm)) {
                     var p = params[nm];
                     if (p === null || p === undefined)
-                        throw new Error("You have at least one null value in your parameters. That's not going to go well for you.");
+                        console.log("Warning: You have at least one null value in your parameters (" + nm + ").");
                 }
     }
     return op;
@@ -133,21 +177,31 @@ function doAction(opcode, sql, params, dflt) {
         var bindStyles = {};
 
         if (!matches) matches = [];
-        else for (var i = 0; i < matches.length; i++) {
-            var match = matches[i];
-            var mtype = match.charAt(0);
-            var mref;
+        else {
+            var qcounter = 0;
+            for (var i = 0; i < matches.length; i++) {
+                var match = matches[i];
+                var mtype = match.charAt(0);
+                var mref;
 
-            bindStyles[mtype] = true;
-            switch (mtype) {
-                case ':': mref = match.substring(1); break;
-                case '$': mref = parseInt(match.substring(1), 10); break;
-                case '?': mref = i; break;
-                default: throw new Error("parse error");
+                bindStyles[mtype] = true;
+                switch (mtype) {
+                    case ':':
+                        mref = match.substring(1);
+                        break;
+                    case '$':
+                        mref = parseInt(match.substring(1), 10);
+                        break;
+                    case '?':
+                        mref = qcounter++;
+                        break;
+                    default:
+                        throw new Error("parse error");
+                }
+
+                matchRefs.push(mref);
+                matchTypes.push(mtype);
             }
-
-            matchRefs.push(mref);
-            matchTypes.push(mtype);
         }
         return {
             rawSql: sql,
@@ -157,6 +211,7 @@ function doAction(opcode, sql, params, dflt) {
             bindStyles: bindStyles
         };
     }
+
     function computeParamShape() {
         var rv = "";
         if (params === null || params === undefined) return false;
@@ -187,7 +242,9 @@ var POOL_FUNCTIONS = {
             process.nextTick(callback, err, null);
         }
     },
-    isClosing: function () { return POOL_FUNCTIONS._closing; },
+    isClosing: function () {
+        return POOL_FUNCTIONS._closing;
+    },
     doCurtains: function (callback) {
         POOL_FUNCTIONS._closing = true;
         var poolsToClose = [];
@@ -196,6 +253,7 @@ var POOL_FUNCTIONS = {
                 poolsToClose.push(POOL_FUNCTIONS._pools[p]);
 
         closeNextPool();
+
         function closeNextPool() {
             if (!poolsToClose.length) return callback();
 
@@ -228,8 +286,8 @@ function doFinale(dbcfg, bTransact, ops, cb) {
     if (POOL_FUNCTIONS.isClosing()) return cb(new Error("Databases are closing down."));
     if (!dbcfg) return cb(new Error("Internal error: config not passed through"));
     if (!ops) return cb(new Error("Internal error: ops not passed through"));
-    if (!cb || typeof cb != "function")  return cb(new Error("Oops, you forgot to provide a function to call back after the finale."));
-    if (ops.finaleComplete)  return cb(new Error("You already had your finale on this stage. Go get a new stage."));
+    if (!cb || typeof cb != "function") return cb(new Error("Oops, you forgot to provide a function to call back after the finale."));
+    if (ops.finaleComplete) return cb(new Error("You already had your finale on this stage. Go get a new stage."));
     ops.finaleComplete = true;
 
     var singularOperation = (ops.length == 1);
@@ -321,10 +379,17 @@ function doFinale(dbcfg, bTransact, ops, cb) {
             var paramVal;
 
             switch (paramType) {
-                case ':': paramVal = explicitParams[paramRef]; break;
-                case '$': paramVal = paramsFromPriorResults[paramRef]; break;
-                case '?': paramVal = explicitParams[paramRef]; break;
-                default: throw new Error("Internal error: unrecognized param type");
+                case ':':
+                    paramVal = explicitParams[paramRef];
+                    break;
+                case '$':
+                    paramVal = paramsFromPriorResults[paramRef];
+                    break;
+                case '?':
+                    paramVal = explicitParams[paramRef];
+                    break;
+                default:
+                    throw new Error("Internal error: unrecognized param type");
             }
 
             rv.push(paramVal);
@@ -342,6 +407,7 @@ function doFinale(dbcfg, bTransact, ops, cb) {
             var i = 0;
 
             doNextExec();
+
             function doNextExec() {
                 if (i >= paramVals.length) {
                     // all done, return result
@@ -350,7 +416,8 @@ function doFinale(dbcfg, bTransact, ops, cb) {
                     var sql = op.sql;
                     var args = makeArgs(op.paramRefs, op.paramTypes, paramVals[i], resultsSoFar);
                     if (dbcfg.echo)
-                        console.log("executing \"" + sql + "\" with " + JSON.stringify(args));
+                        if (sql.indexOf("insert into log") == -1 && sql.indexOf("SET autocommit=") == -1)
+                            console.log("executing \"" + sql + "\" with " + JSON.stringify(args));
                     conn.execute(sql, args, (err, resultsFromThisExec) => {
                         if (err) return process.nextTick(callback, err, null);
                         var nrowsAffected = (resultsFromThisExec && resultsFromThisExec.affectedRows ? resultsFromThisExec.affectedRows : 0);
@@ -374,6 +441,7 @@ function doFinale(dbcfg, bTransact, ops, cb) {
             var i = 0;
 
             doNextExec();
+
             function doNextExec() {
                 if (i >= paramVals.length) {
                     // all done, return result; unbundle from array if user passed in singular params
