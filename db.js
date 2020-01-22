@@ -89,9 +89,7 @@ function DbStage(cfg) {
      * and committed on success, or rolled back (as much as possible)
      * on failure.
      */
-    this.finale = (callback, autocommit, nowarn) => {
-        if (!nowarn)
-            console.trace("Consider using .perform() instead");
+    this.finale = (callback, autocommit) => {
         doFinale(cfg, !autocommit, ops, callback);
     };
 

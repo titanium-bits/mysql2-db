@@ -1,6 +1,6 @@
 {
   "name": "mysql2-db",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "description": "utility wrapper for Node.js mysql2 library",
   "main": "db.js",
   "scripts": {
